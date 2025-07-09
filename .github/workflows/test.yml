@@ -154,7 +154,7 @@ jobs:
     if: ${{ contains('["merge_group", "workflow_dispatch"]', github.event_name) }}
     needs:
       - docker-build-local
-    uses: agglayer/e2e/.github/workflows/cdk-e2e.yml@8518659c9848160debc83d8de7366145d659d7b2 # jhilliard/gas-token-test
+    uses: agglayer/e2e/.github/workflows/cdk-e2e.yml@45314f4f839e1ac54844b4f49c7436de6a9e29d5 # jhilliard/gas-token-test
     secrets: inherit
     with:
       docker-image-override: agglayer_image
