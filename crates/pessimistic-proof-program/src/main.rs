@@ -7,8 +7,15 @@ use pessimistic_proof_core::{
 
 sp1_zkvm::entrypoint!(main);
 pub fn main() {
-    let initial_state = sp1_zkvm::io::read::<NetworkState>();
-    let batch_header = sp1_zkvm::io::read::<MultiBatchHeader<Keccak256Hasher>>();
+    let initial_state_bytes = sp1_zkvm::io::read_vec();
+    let initial_state = rkyv::from_bytes::<NetworkState, rkyv::rancor::Error>(&initial_state_bytes)
+        .expect("Failed to deserialize witness data.");
+
+    let batch_header_bytes = sp1_zkvm::io::read_vec();
+    let batch_header = rkyv::from_bytes::<MultiBatchHeader<Keccak256Hasher>, rkyv::rancor::Error>(
+        &batch_header_bytes,
+    )
+    .expect("Failed to deserialize batch header.");
 
     let (outputs, _targets) = generate_pessimistic_proof(initial_state, &batch_header).unwrap();
 

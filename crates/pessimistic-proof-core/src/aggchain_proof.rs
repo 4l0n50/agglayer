@@ -23,7 +23,9 @@ pub type Vkey = [u32; 8];
 
 /// Aggchain Data which is either one ECDSA signature, or one generic proof.
 /// Contains all the necessary data for verification.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
 pub enum AggchainData {
     /// ECDSA signature.
     ECDSA {
