@@ -44,6 +44,12 @@ agglayer-test-suite = { path = "crates/agglayer-test-suite" }
 pessimistic-proof = { path = "crates/pessimistic-proof" }
 pessimistic-proof-core = { path = "crates/pessimistic-proof-core" }
 pessimistic-proof-test-suite = { path = "crates/pessimistic-proof-test-suite" }
+rkyv = { version = "0.8.13", features = [
+    "hashbrown-0_15",
+    "std",
+    "bytecheck",
+    "unaligned",
+] }
 
 # Interop
 agglayer-bincode = "0.13.0"

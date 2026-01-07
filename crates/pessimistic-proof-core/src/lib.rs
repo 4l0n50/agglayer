@@ -5,6 +5,7 @@ pub use proof::{generate_pessimistic_proof, PessimisticProofOutput, ProofError};
 
 pub mod local_balance_tree;
 
+mod adapters;
 pub mod aggchain_data;
 pub mod local_state;
 pub mod multi_batch_header;

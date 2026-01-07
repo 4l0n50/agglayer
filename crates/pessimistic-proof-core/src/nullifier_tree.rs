@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use unified_bridge::{GlobalIndex, NetworkId};
 
-use crate::ProofError;
+use crate::{adapters::DigestAdapter, ProofError};
 
 // 32 bits for the network id and 32 bits for the LET index
 pub const NULLIFIER_TREE_DEPTH: usize = 64;
@@ -12,10 +12,13 @@ pub const NULLIFIER_TREE_DEPTH: usize = 64;
 /// A commitment to the set of per-network nullifier trees maintained by the
 /// local network
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
 pub struct NullifierTree {
     /// The Merkle Root of the nullifier tree
     #[serde_as(as = "_")]
+    #[rkyv(with = DigestAdapter)]
     pub root: Digest,
 }
 

@@ -15,6 +15,7 @@ pub use crate::aggchain_data::{
     multisig::{MultiSignature, MultisigError},
 };
 use crate::{
+    adapters::{AddressAdapter, SignatureAdapter},
     local_state::commitment::{
         PessimisticRootCommitmentVersion, SignatureCommitmentValues, SignatureCommitmentVersion,
     },
@@ -30,13 +31,17 @@ pub type Vkey = [u32; 8];
 
 /// Chain proof which include either multisig, aggchain proof, or both.
 /// Explicit enum which forbid the case where we have none of them.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
 pub enum AggchainData {
     /// Legacy signature with migration logic
     LegacyEcdsa {
         /// Signer committing to the state transition.
+        #[rkyv(with = AddressAdapter)]
         signer: Address,
         /// Signature committing to the state transition.
+        #[rkyv(with = SignatureAdapter)]
         signature: Signature,
     },
     /// Multisig only

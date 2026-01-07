@@ -3,13 +3,17 @@ use serde::{Deserialize, Serialize};
 use unified_bridge::AggchainProofPublicValues;
 
 use crate::{
+    adapters::DigestAdapter,
     aggchain_data::Vkey,
     proof::{ConstrainedValues, IMPORTED_BRIDGE_EXIT_COMMITMENT_VERSION},
 };
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
 pub struct AggchainProof {
     /// Chain-specific commitment forwarded by the PP.
+    #[rkyv(with = DigestAdapter)]
     pub aggchain_params: Digest,
     /// Verifying key for the aggchain proof program.
     pub aggchain_vkey: Vkey,

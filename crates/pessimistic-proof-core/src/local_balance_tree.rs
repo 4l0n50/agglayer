@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use unified_bridge::TokenInfo;
 
-use crate::ProofError;
+use crate::{adapters::DigestAdapter, ProofError};
 
 /// The key is [`TokenInfo`] which can be packed into 192 bits (32 for network
 /// id and 160 for token address).
@@ -13,10 +13,13 @@ pub const LOCAL_BALANCE_TREE_DEPTH: usize = 192;
 /// A commitment to the set of per-network local balance trees maintained by the
 /// local network
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
 pub struct LocalBalanceTree {
     /// The Merkle Root of the local balance tree
     #[serde_as(as = "_")]
+    #[rkyv(with = DigestAdapter)]
     pub root: Digest,
 }
 

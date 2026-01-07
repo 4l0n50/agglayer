@@ -3,11 +3,17 @@ use alloy_primitives::{keccak256, B256, U256};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+use crate::adapters::{AddressAdapter, OptionSignatureAdapter};
+
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
 pub struct MultiSignature {
     /// Set of the indexed signatures
+    #[rkyv(with = rkyv::with::Map<OptionSignatureAdapter>)]
     pub signatures: Vec<Option<Signature>>,
     /// Set of all registered signers
+    #[rkyv(with = rkyv::with::Map<AddressAdapter>)]
     pub expected_signers: Vec<Address>,
     /// Inclusive minimal number of signers.
     pub threshold: usize,

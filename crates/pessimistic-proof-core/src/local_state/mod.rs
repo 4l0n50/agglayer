@@ -3,10 +3,12 @@ use std::collections::{btree_map::Entry, BTreeMap};
 use agglayer_primitives::{ruint::UintTryFrom, Hashable, U256, U512};
 use agglayer_tries::roots::{LocalBalanceRoot, LocalNullifierRoot};
 use commitment::StateCommitment;
+use rkyv::bytecheck;
 use serde::{Deserialize, Serialize};
 use unified_bridge::{Error, LocalExitTree, NetworkId, L1_ETH};
 
 use crate::{
+    adapters::LocalExitTreeAdapter,
     local_balance_tree::LocalBalanceTree,
     multi_batch_header::MultiBatchHeader,
     nullifier_tree::{NullifierKey, NullifierTree},
@@ -17,9 +19,13 @@ pub mod commitment;
 
 /// State representation of one network without the leaves, taken as input by
 /// the prover.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+)]
+#[repr(C)]
 pub struct NetworkState {
     /// Commitment to the [`BridgeExit`](struct@crate::bridge_exit::BridgeExit).
+    #[rkyv(with = LocalExitTreeAdapter<32>)]
     pub exit_tree: LocalExitTree,
     /// Commitment to the balance for each token.
     pub balance_tree: LocalBalanceTree,
