@@ -33,6 +33,7 @@ tokio.workspace = true
 tokio-stream.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
+rkyv.workspace = true
 
 agglayer-clock.workspace = true
 agglayer-config = { workspace = true, optional = true }

@@ -12,9 +12,7 @@ pub fn main() {
 
     let (outputs, _targets) = generate_pessimistic_proof(initial_state, &batch_header).unwrap();
 
-    let pp_inputs = PessimisticProofOutput::bincode_codec()
-        .serialize(&outputs)
-        .unwrap();
+    let pp_inputs = outputs.rkyv_to_bytes().unwrap();
 
     sp1_zkvm::io::commit_slice(&pp_inputs);
 }

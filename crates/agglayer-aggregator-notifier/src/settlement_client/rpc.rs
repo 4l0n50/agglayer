@@ -124,8 +124,8 @@ where
         // Step 4: Deserialize and prepare the proof
         let (output, proof) =
             if let Some(Proof::SP1(proof)) = self.pending_store.get_proof(certificate_id)? {
-                if let Ok(output) = PessimisticProofOutput::bincode_codec()
-                    .deserialize::<PessimisticProofOutput>(proof.public_values.as_slice())
+                if let Ok(output) =
+                    PessimisticProofOutput::rkyv_from_bytes(proof.public_values.as_slice())
                 {
                     (output, proof.bytes())
                 } else {

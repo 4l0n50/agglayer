@@ -1,12 +1,13 @@
 use agglayer_contracts::L1RpcError;
 use agglayer_types::{
-    aggchain_proof::AggchainProofPublicValues, bincode, CertificateId, CertificateStatusError,
-    Digest, Height, NetworkId, SettlementTxHash,
+    aggchain_proof::AggchainProofPublicValues, CertificateId, CertificateStatusError, Digest,
+    Height, NetworkId, SettlementTxHash,
 };
 use pessimistic_proof::{
     core::commitment::StateCommitment, error::ProofVerificationError, PessimisticProofOutput,
     ProofError,
 };
+use rkyv::rancor::Error as RkyvError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum PreCertificationError {
@@ -62,11 +63,8 @@ pub enum CertificationError {
     #[error("Type error: {source}")]
     Types { source: agglayer_types::Error },
 
-    #[error("Serialize error")]
-    Serialize { source: bincode::Error },
-
     #[error("Deserialize error")]
-    Deserialize { source: bincode::Error },
+    Deserialize { source: RkyvError },
 
     #[error("Internal error: {0}")]
     InternalError(String),

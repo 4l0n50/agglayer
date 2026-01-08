@@ -212,9 +212,9 @@ where
             .map_err(CertificationError::Other)?
             .map_err(|e| CertificationError::Sp1ExecuteFailed(eyre!(e)))?;
 
-            let pv_sp1_execute: PessimisticProofOutput = PessimisticProofOutput::bincode_codec()
-                .deserialize(pv.as_slice())
-                .map_err(|source| CertificationError::Deserialize { source })?;
+            let pv_sp1_execute: PessimisticProofOutput =
+                PessimisticProofOutput::rkyv_from_bytes(pv.as_slice())
+                    .map_err(|source| CertificationError::Deserialize { source })?;
 
             (pv_sp1_execute, report)
         };

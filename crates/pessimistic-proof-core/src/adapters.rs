@@ -1,5 +1,8 @@
 use agglayer_primitives::{Address, Digest, Signature};
-use agglayer_tries::proof::{SmtMerkleProof, SmtNonInclusionProof};
+use agglayer_tries::{
+    proof::{SmtMerkleProof, SmtNonInclusionProof},
+    roots::LocalExitRoot,
+};
 use alloy_primitives::U256;
 use rkyv::{
     rancor::Fallible,
@@ -47,6 +50,39 @@ impl<D: Fallible> DeserializeWith<<[u8; 32] as Archive>::Archived, Digest, D> fo
         let bytes: [u8; 32] =
             <[u8; 32] as rkyv::Deserialize<[u8; 32], D>>::deserialize(archived, deserializer)?;
         Ok(Digest(bytes))
+    }
+}
+
+/// rkyv adapter that archives `LocalExitRoot` as bytes.
+pub struct LocalExitRootAdapter;
+
+impl ArchiveWith<LocalExitRoot> for LocalExitRootAdapter {
+    type Archived = <[u8; 32] as Archive>::Archived;
+    type Resolver = <[u8; 32] as Archive>::Resolver;
+
+    fn resolve_with(field: &LocalExitRoot, resolver: Self::Resolver, out: Place<Self::Archived>) {
+        let bytes: [u8; 32] = *field.as_ref();
+        bytes.resolve(resolver, out);
+    }
+}
+
+impl<S: Fallible> SerializeWith<LocalExitRoot, S> for LocalExitRootAdapter {
+    fn serialize_with(field: &LocalExitRoot, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
+        let bytes: [u8; 32] = *field.as_ref();
+        <[u8; 32] as rkyv::Serialize<S>>::serialize(&bytes, serializer)
+    }
+}
+
+impl<D: Fallible> DeserializeWith<<[u8; 32] as Archive>::Archived, LocalExitRoot, D>
+    for LocalExitRootAdapter
+{
+    fn deserialize_with(
+        archived: &<[u8; 32] as Archive>::Archived,
+        deserializer: &mut D,
+    ) -> Result<LocalExitRoot, D::Error> {
+        let bytes: [u8; 32] =
+            <[u8; 32] as rkyv::Deserialize<[u8; 32], D>>::deserialize(archived, deserializer)?;
+        Ok(LocalExitRoot::from(bytes))
     }
 }
 

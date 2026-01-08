@@ -40,9 +40,7 @@ impl Runner {
 
     /// Extract outputs from the committed public values.
     pub fn extract_output(public_vals: SP1PublicValues) -> PessimisticProofOutput {
-        PessimisticProofOutput::bincode_codec()
-            .deserialize(public_vals.as_slice())
-            .expect("deser")
+        PessimisticProofOutput::rkyv_from_bytes(public_vals.as_slice()).expect("deser")
     }
 
     /// Execute the ELF with given inputs.

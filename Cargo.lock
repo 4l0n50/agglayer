@@ -138,6 +138,7 @@ dependencies = [
  "parking_lot",
  "pessimistic-proof",
  "reqwest",
+ "rkyv",
  "rstest",
  "serde",
  "serde_json",

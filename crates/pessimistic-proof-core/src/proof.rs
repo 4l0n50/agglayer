@@ -1,7 +1,7 @@
-use agglayer_bincode as bincode;
 use agglayer_primitives::{Address, Digest};
 use agglayer_tries::roots::LocalExitRoot;
 use hex_literal::hex;
+use rkyv::rancor::Error as RkyvError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use unified_bridge::{
@@ -10,6 +10,7 @@ use unified_bridge::{
 };
 
 use crate::{
+    adapters::{DigestAdapter, LocalExitRootAdapter, NetworkIdAdapter},
     aggchain_data::MultisigError,
     local_state::{
         commitment::{
@@ -151,28 +152,48 @@ pub enum ProofError {
 }
 
 /// Outputs of the pessimistic proof.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+)]
 pub struct PessimisticProofOutput {
     /// The previous local exit root.
+    #[rkyv(with = LocalExitRootAdapter)]
     pub prev_local_exit_root: LocalExitRoot,
     /// The previous pessimistic root.
+    #[rkyv(with = DigestAdapter)]
     pub prev_pessimistic_root: Digest,
     /// The l1 info root against which we prove the inclusion of the imported
     /// bridge exits.
+    #[rkyv(with = DigestAdapter)]
     pub l1_info_root: Digest,
     /// The origin network of the pessimistic proof.
+    #[rkyv(with = NetworkIdAdapter)]
     pub origin_network: NetworkId,
     /// The aggchain hash.
+    #[rkyv(with = DigestAdapter)]
     pub aggchain_hash: Digest,
     /// The new local exit root.
+    #[rkyv(with = LocalExitRootAdapter)]
     pub new_local_exit_root: LocalExitRoot,
     /// The new pessimistic root.
+    #[rkyv(with = DigestAdapter)]
     pub new_pessimistic_root: Digest,
 }
 
 impl PessimisticProofOutput {
-    pub fn bincode_codec() -> bincode::Codec<impl bincode::Options> {
-        bincode::contracts()
+    pub fn rkyv_to_bytes(&self) -> Result<rkyv::util::AlignedVec, RkyvError> {
+        rkyv::to_bytes::<RkyvError>(self)
+    }
+
+    pub fn rkyv_from_bytes(bytes: &[u8]) -> Result<Self, RkyvError> {
+        rkyv::from_bytes::<Self, RkyvError>(bytes)
     }
 }
 

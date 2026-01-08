@@ -480,8 +480,7 @@ where
                     // Extract settled_pp_root from the settled certificate's proof public values
                     network_info.settled_pp_root = match self.get_proof(cert.certificate_id) {
                         Ok(Some(agglayer_types::Proof::SP1(sp1_proof))) => {
-                            match pessimistic_proof::PessimisticProofOutput::bincode_codec()
-                                .deserialize::<pessimistic_proof::PessimisticProofOutput>(
+                            match pessimistic_proof::PessimisticProofOutput::rkyv_from_bytes(
                                 sp1_proof.public_values.as_slice(),
                             ) {
                                 Ok(output) => Some(output.new_pessimistic_root),
