@@ -749,12 +749,20 @@ mod tests {
 
     use std::collections::BTreeMap;
 
+    use agglayer_primitives::{Address, Digest, U256};
     use rkyv::{api::low::from_bytes, rancor::Error, to_bytes};
+    use unified_bridge::{
+        BridgeExit, Claim, ClaimFromMainnet, GlobalIndex, ImportedBridgeExit, L1InfoTreeLeaf,
+        L1InfoTreeLeafInner, LeafType, MerkleProof, NetworkId, TokenInfo,
+    };
 
     use super::*;
     use crate::{
-        aggchain_data::AggchainData, local_balance_tree::LocalBalanceTree,
-        multi_batch_header::MultiBatchHeader, nullifier_tree::NullifierTree, NetworkState,
+        aggchain_data::{AggchainData, MultiSignature},
+        local_balance_tree::{LocalBalancePath, LocalBalanceTree, LOCAL_BALANCE_TREE_DEPTH},
+        multi_batch_header::MultiBatchHeader,
+        nullifier_tree::{NullifierPath, NullifierTree},
+        NetworkState,
     };
 
     #[test]
@@ -820,284 +828,143 @@ mod tests {
         Ok(())
     }
 
-    /// Deep comparison function to check for lossy conversions
-    /// This function compares all fields including nested structures
-    /// Uses Eq where available, manual comparison where needed
-    fn deep_equals(original: &MultiBatchHeader, reconstructed: &MultiBatchHeader) -> bool {
-        // Compare basic fields (all have Eq)
-        if original.origin_network != reconstructed.origin_network
-            || original.height != reconstructed.height
-            || original.prev_pessimistic_root != reconstructed.prev_pessimistic_root
-            || original.bridge_exits != reconstructed.bridge_exits
-            || original.l1_info_root != reconstructed.l1_info_root
-            || original.aggchain_data != reconstructed.aggchain_data
-            || original.certificate_id != reconstructed.certificate_id
-        {
-            return false;
-        }
-
-        // Compare imported_bridge_exits (most fields have Eq, only nullifier paths need
-        // manual comparison)
-        if original.imported_bridge_exits.len() != reconstructed.imported_bridge_exits.len() {
-            return false;
-        }
-        for (orig, rec) in original
-            .imported_bridge_exits
-            .iter()
-            .zip(reconstructed.imported_bridge_exits.iter())
-        {
-            // Compare ImportedBridgeExit (has Eq)
-            if orig.0 != rec.0 {
-                return false;
-            }
-            // Compare nullifier paths manually (SmtNonInclusionProof doesn't have Eq)
-            if orig.1.siblings != rec.1.siblings {
-                return false;
-            }
-        }
-
-        // Compare balances_proofs (most fields have Eq, only merkle paths need manual
-        // comparison)
-        if original.balances_proofs.len() != reconstructed.balances_proofs.len() {
-            return false;
-        }
-        for (orig, rec) in original
-            .balances_proofs
-            .iter()
-            .zip(reconstructed.balances_proofs.iter())
-        {
-            // Compare TokenInfo and U256 (both have Eq)
-            if orig.0 != rec.0 || orig.1 .0 != rec.1 .0 {
-                return false;
-            }
-            // Compare merkle paths manually (SmtMerkleProof doesn't have Eq)
-            if orig.1 .1.siblings != rec.1 .1.siblings {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Test helper to create a sample BridgeExit
-    fn create_sample_bridge_exit() -> BridgeExit {
-        BridgeExit {
-            leaf_type: LeafType::Message,
-            token_info: TokenInfo {
-                origin_network: NetworkId::new(1),
-                origin_token_address: Address::from([1u8; 20]),
-            },
-            dest_network: NetworkId::new(2),
-            dest_address: Address::from([2u8; 20]),
-            amount: U256::from(1000u64),
-            metadata: Some(Digest([3u8; 32])),
-        }
-    }
-
-    /// Test helper to create a sample ImportedBridgeExit
-    fn create_sample_imported_bridge_exit() -> ImportedBridgeExit {
-        ImportedBridgeExit {
-            bridge_exit: create_sample_bridge_exit(),
-            claim_data: Claim::Mainnet(Box::new(ClaimFromMainnet {
-                proof_leaf_mer: MerkleProof {
-                    proof: LETMerkleProof {
-                        siblings: [Digest([4u8; 32]); 32],
-                    },
-                    root: Digest([5u8; 32]),
-                },
-                proof_ger_l1root: MerkleProof {
-                    proof: LETMerkleProof {
-                        siblings: [Digest([6u8; 32]); 32],
-                    },
-                    root: Digest([7u8; 32]),
-                },
-                l1_leaf: L1InfoTreeLeaf {
-                    l1_info_tree_index: 42,
-                    rer: Digest([8u8; 32]),
-                    mer: Digest([9u8; 32]),
-                    inner: L1InfoTreeLeafInner {
-                        block_hash: Digest([10u8; 32]),
-                        timestamp: 1234567890,
-                        global_exit_root: Digest([11u8; 32]),
-                    },
-                },
-            })),
-            global_index: GlobalIndex::new(NetworkId::new(3), 123),
-        }
-    }
-
-    /// Test helper to create a sample ImportedBridgeExit with Rollup claim
-    fn create_sample_imported_bridge_exit_rollup() -> ImportedBridgeExit {
-        ImportedBridgeExit {
-            bridge_exit: create_sample_bridge_exit(),
-            claim_data: Claim::Rollup(Box::new(ClaimFromRollup {
-                proof_leaf_ler: MerkleProof {
-                    proof: LETMerkleProof {
-                        siblings: [Digest([12u8; 32]); 32],
-                    },
-                    root: Digest([13u8; 32]),
-                },
-                proof_ler_rer: MerkleProof {
-                    proof: LETMerkleProof {
-                        siblings: [Digest([14u8; 32]); 32],
-                    },
-                    root: Digest([15u8; 32]),
-                },
-                proof_ger_l1root: MerkleProof {
-                    proof: LETMerkleProof {
-                        siblings: [Digest([16u8; 32]); 32],
-                    },
-                    root: Digest([17u8; 32]),
-                },
-                l1_leaf: L1InfoTreeLeaf {
-                    l1_info_tree_index: 43,
-                    rer: Digest([18u8; 32]),
-                    mer: Digest([19u8; 32]),
-                    inner: L1InfoTreeLeafInner {
-                        block_hash: Digest([20u8; 32]),
-                        timestamp: 1234567891,
-                        global_exit_root: Digest([21u8; 32]),
-                    },
-                },
-            })),
-            global_index: GlobalIndex::new(NetworkId::new(4), 124),
-        }
-    }
-
-    /// Test helper to create a sample TokenInfo
-    fn create_sample_token_info() -> TokenInfo {
-        TokenInfo {
-            origin_network: NetworkId::new(4),
-            origin_token_address: Address::from([12u8; 20]),
-        }
-    }
-
-    pub type BalanceMerkleProof = SmtMerkleProof<192>;
-
-    /// Test helper to create a sample BalanceMerkleProof
-    fn create_sample_balance_merkle_proof() -> BalanceMerkleProof {
-        BalanceMerkleProof {
-            siblings: [Digest([13u8; 32]); 192],
-        }
-    }
-
-    pub type NullifierNonInclusionProof = SmtNonInclusionProof<64>;
-
-    /// Test helper to create a sample NullifierNonInclusionProof
-    fn create_sample_nullifier_non_inclusion_proof() -> NullifierNonInclusionProof {
-        NullifierNonInclusionProof {
-            siblings: vec![Digest([14u8; 32]); 64],
-        }
-    }
-
-    /// Test helper to create a sample NullifierNonInclusionProof with fewer
-    /// siblings
-    fn create_sample_nullifier_non_inclusion_proof_partial() -> NullifierNonInclusionProof {
-        NullifierNonInclusionProof {
-            siblings: vec![Digest([15u8; 32]); 32], // Only 32 siblings instead of 64
-        }
-    }
-
-    /// Test helper to create a sample MultiBatchHeader
-    fn create_sample_multi_batch_header() -> MultiBatchHeader {
-        MultiBatchHeader {
-            origin_network: NetworkId::new(5),
-            height: 1000,
-            prev_pessimistic_root: Digest([15u8; 32]),
-            bridge_exits: vec![create_sample_bridge_exit()],
-            imported_bridge_exits: vec![(
-                create_sample_imported_bridge_exit(),
-                create_sample_nullifier_non_inclusion_proof(),
-            )],
-            l1_info_root: Digest([16u8; 32]),
-            balances_proofs: vec![(
-                create_sample_token_info(),
-                (U256::from(5000u64), create_sample_balance_merkle_proof()),
-            )],
-            aggchain_data: AggchainData::LegacyEcdsa {
-                signer: Address::from([17u8; 20]),
-                signature: Signature::new(U256::from(18u64), U256::from(19u64), true),
-            },
-            certificate_id: Digest([20u8; 32]),
-        }
-    }
-
-    /// Test helper to create a sample MultiBatchHeader with Generic aggchain
-    /// proof
-    fn create_sample_multi_batch_header_generic() -> MultiBatchHeader {
-        MultiBatchHeader {
-            origin_network: NetworkId::new(6),
-            height: 2000,
-            prev_pessimistic_root: Digest([20u8; 32]),
-            bridge_exits: vec![create_sample_bridge_exit()],
-            imported_bridge_exits: vec![(
-                create_sample_imported_bridge_exit(),
-                create_sample_nullifier_non_inclusion_proof(),
-            )],
-            l1_info_root: Digest([21u8; 32]),
-            balances_proofs: BTreeMap::from([(
-                create_sample_token_info(),
-                (U256::from(7000u64), create_sample_balance_merkle_proof()),
-            )]),
-            aggchain_data: AggchainData::AggchainProofOnly(crate::aggchain_data::AggchainProof {
-                aggchain_params: Digest([22u8; 32]),
-                aggchain_vkey: [23u32, 24u32, 25u32, 26u32, 27u32, 28u32, 29u32, 30u32],
-            }),
-            certificate_id: Digest([21u8; 32]),
-        }
-    }
-
-    /// Test helper to create a sample MultiBatchHeader with Rollup claims
-    fn create_sample_multi_batch_header_rollup() -> MultiBatchHeader {
-        MultiBatchHeader {
+    fn sample_multi_batch_header() -> MultiBatchHeader {
+        let token_info = TokenInfo {
             origin_network: NetworkId::new(7),
-            height: 3000,
-            prev_pessimistic_root: Digest([30u8; 32]),
-            bridge_exits: vec![create_sample_bridge_exit()],
-            imported_bridge_exits: vec![(
-                create_sample_imported_bridge_exit_rollup(),
-                create_sample_nullifier_non_inclusion_proof(),
-            )],
-            l1_info_root: Digest([31u8; 32]),
-            balances_proofs: vec![(
-                create_sample_token_info(),
-                (U256::from(8000u64), create_sample_balance_merkle_proof()),
-            )],
-            aggchain_data: AggchainData::LegacyEcdsa {
-                signer: Address::from([32u8; 20]),
-                signature: Signature::new(U256::from(33u64), U256::from(34u64), false),
+            origin_token_address: Address::from([0x11; 20]),
+        };
+
+        let bridge_exit = BridgeExit {
+            leaf_type: LeafType::Transfer,
+            token_info,
+            dest_network: NetworkId::new(9),
+            dest_address: Address::from([0x22; 20]),
+            amount: U256::from(1234u64),
+            metadata: Some(Digest([0x99; 32])),
+        };
+
+        let imported_bridge_exit = ImportedBridgeExit {
+            bridge_exit: BridgeExit {
+                leaf_type: LeafType::Transfer,
+                token_info: TokenInfo {
+                    origin_network: NetworkId::new(3),
+                    origin_token_address: Address::from([0x33; 20]),
+                },
+                dest_network: NetworkId::new(4),
+                dest_address: Address::from([0x44; 20]),
+                amount: U256::from(5678u64),
+                metadata: None,
             },
-            certificate_id: Digest([31u8; 32]),
+            claim_data: Claim::Mainnet(Box::new(ClaimFromMainnet {
+                proof_leaf_mer: MerkleProof::new(Digest([0x10; 32]), [Digest([0x11; 32]); 32]),
+                proof_ger_l1root: MerkleProof::new(Digest([0x12; 32]), [Digest([0x13; 32]); 32]),
+                l1_leaf: L1InfoTreeLeaf {
+                    l1_info_tree_index: 7,
+                    rer: Digest([0x14; 32]),
+                    mer: Digest([0x15; 32]),
+                    inner: L1InfoTreeLeafInner {
+                        global_exit_root: Digest([0x16; 32]),
+                        block_hash: Digest([0x17; 32]),
+                        timestamp: 123,
+                    },
+                },
+            })),
+            global_index: GlobalIndex::new(NetworkId::ETH_L1, 12),
+        };
+
+        let nullifier_path = NullifierPath {
+            siblings: vec![Digest([0x20; 32]); 4],
+        };
+
+        let balance_path = LocalBalancePath {
+            siblings: core::array::from_fn(|i| Digest([i as u8; 32])),
+        };
+
+        let mut balances_proofs = BTreeMap::new();
+        balances_proofs.insert(token_info, (U256::from(900u64), balance_path));
+
+        MultiBatchHeader {
+            origin_network: NetworkId::new(42),
+            height: 7,
+            prev_pessimistic_root: Digest([0xAA; 32]),
+            bridge_exits: vec![bridge_exit],
+            imported_bridge_exits: vec![(imported_bridge_exit, nullifier_path)],
+            l1_info_root: Digest([0xBB; 32]),
+            balances_proofs,
+            aggchain_data: AggchainData::MultisigOnly(MultiSignature {
+                signatures: vec![],
+                expected_signers: vec![],
+                threshold: 0,
+            }),
+            certificate_id: Digest([0xCC; 32]),
         }
     }
 
-    /// Test helper to create a sample MultiBatchHeader with mixed claims
-    fn create_sample_multi_batch_header_mixed() -> MultiBatchHeader {
-        MultiBatchHeader {
-            origin_network: NetworkId::new(8),
-            height: 4000,
-            prev_pessimistic_root: Digest([40u8; 32]),
-            bridge_exits: vec![create_sample_bridge_exit()],
-            imported_bridge_exits: vec![
-                (
-                    create_sample_imported_bridge_exit(),
-                    create_sample_nullifier_non_inclusion_proof(),
-                ),
-                (
-                    create_sample_imported_bridge_exit_rollup(),
-                    create_sample_nullifier_non_inclusion_proof(),
-                ),
-            ],
-            l1_info_root: Digest([41u8; 32]),
-            balances_proofs: vec![(
-                create_sample_token_info(),
-                (U256::from(9000u64), create_sample_balance_merkle_proof()),
-            )],
-            aggchain_data: AggchainData::AggchainProofOnly(crate::aggchain_data::AggchainProof {
-                aggchain_params: Digest([42u8; 32]),
-                aggchain_vkey: [43u32, 44u32, 45u32, 46u32, 47u32, 48u32, 49u32, 50u32],
-            }),
-            certificate_id: Digest([41u8; 32]),
-        }
+    #[test]
+    fn test_multi_batch_header_zero_copy_roundtrip() -> Result<(), Error> {
+        let header = sample_multi_batch_header();
+        let token_info = *header.balances_proofs.keys().next().expect("token info");
+
+        let bytes = to_bytes::<Error>(&header)?;
+        let deserialized = from_bytes::<MultiBatchHeader, Error>(&bytes)?;
+
+        assert_eq!(header.origin_network, deserialized.origin_network);
+        assert_eq!(header.height, deserialized.height);
+        assert_eq!(
+            header.prev_pessimistic_root,
+            deserialized.prev_pessimistic_root
+        );
+        assert_eq!(header.bridge_exits, deserialized.bridge_exits);
+        assert_eq!(
+            header.imported_bridge_exits.len(),
+            deserialized.imported_bridge_exits.len()
+        );
+        assert_eq!(header.l1_info_root, deserialized.l1_info_root);
+        assert_eq!(header.aggchain_data, deserialized.aggchain_data);
+        assert_eq!(header.certificate_id, deserialized.certificate_id);
+
+        let (orig_imported, orig_path) = &header.imported_bridge_exits[0];
+        let (new_imported, new_path) = &deserialized.imported_bridge_exits[0];
+        assert_eq!(orig_imported, new_imported);
+        assert_eq!(orig_path.siblings.len(), new_path.siblings.len());
+        assert_eq!(orig_path.siblings[0], new_path.siblings[0]);
+
+        let (orig_balance, orig_balance_path) = header
+            .balances_proofs
+            .get(&token_info)
+            .expect("orig balance");
+        let (new_balance, new_balance_path) = deserialized
+            .balances_proofs
+            .get(&token_info)
+            .expect("new balance");
+
+        assert_eq!(orig_balance, new_balance);
+        assert_eq!(orig_balance_path.siblings[0], new_balance_path.siblings[0]);
+        assert_eq!(
+            orig_balance_path.siblings[LOCAL_BALANCE_TREE_DEPTH - 1],
+            new_balance_path.siblings[LOCAL_BALANCE_TREE_DEPTH - 1]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_multi_batch_header_zero_copy_invalid_input() -> Result<(), Error> {
+        let header = sample_multi_batch_header();
+
+        let bytes = to_bytes::<Error>(&header)?;
+
+        // Test unaligned data
+        let unaligned = &bytes[1..];
+        assert!(from_bytes::<MultiBatchHeader, Error>(unaligned).is_err());
+
+        // Test wrong size (too small)
+        let too_small = &bytes[..bytes.len() - 1];
+        assert!(from_bytes::<MultiBatchHeader, Error>(too_small).is_err());
+
+        // Test empty data
+        assert!(from_bytes::<MultiBatchHeader, Error>(&[]).is_err());
+
+        Ok(())
     }
 }

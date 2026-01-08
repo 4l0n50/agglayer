@@ -32,7 +32,14 @@ pub type Vkey = [u32; 8];
 /// Chain proof which include either multisig, aggchain proof, or both.
 /// Explicit enum which forbid the case where we have none of them.
 #[derive(
-    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+    Clone,
+    Debug,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
 )]
 pub enum AggchainData {
     /// Legacy signature with migration logic

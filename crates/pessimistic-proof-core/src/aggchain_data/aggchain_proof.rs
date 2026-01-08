@@ -9,7 +9,14 @@ use crate::{
 };
 
 #[derive(
-    Clone, Debug, Serialize, Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize,
+    Clone,
+    Debug,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
 )]
 pub struct AggchainProof {
     /// Chain-specific commitment forwarded by the PP.
