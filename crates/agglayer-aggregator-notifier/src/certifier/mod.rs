@@ -20,6 +20,7 @@ use pessimistic_proof::{
     NetworkState, PessimisticProofOutput,
 };
 use prover_executor::{sp1_blocking, sp1_fast};
+use rkyv::{api::high::to_bytes, rancor::Error as RkyvError};
 use sp1_sdk::{
     CpuProver, Prover, SP1ProofWithPublicValues, SP1Stdin, SP1VerificationError, SP1VerifyingKey,
 };
@@ -157,8 +158,10 @@ where
         let network_state = pessimistic_proof::NetworkState::from(initial_state);
         let mut stdin = sp1_fast(|| {
             let mut stdin = SP1Stdin::new();
-            stdin.write(&network_state);
-            stdin.write(&multi_batch_header);
+            let state_bytes = to_bytes::<RkyvError>(&network_state).expect("state rkyv");
+            let header_bytes = to_bytes::<RkyvError>(&multi_batch_header).expect("header rkyv");
+            stdin.write_slice(&state_bytes);
+            stdin.write_slice(&header_bytes);
             stdin
         })
         .map_err(CertificationError::Other)?;

@@ -32,6 +32,7 @@ tokio = { workspace = true, features = ["full"] }
 tower.workspace = true
 tonic = { workspace = true, features = ["zstd"] }
 tracing.workspace = true
+rkyv.workspace = true
 
 sp1-sdk.workspace = true
 sp1-prover.workspace = true

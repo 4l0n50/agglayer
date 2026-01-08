@@ -2,6 +2,7 @@ use eyre::eyre;
 use pessimistic_proof::NetworkState;
 pub use pessimistic_proof::{multi_batch_header::MultiBatchHeader, PessimisticProofOutput};
 pub use sp1_sdk::{ExecutionReport, SP1Proof};
+use rkyv::{api::high::to_bytes, rancor::Error as RkyvError};
 use sp1_sdk::{SP1ProofWithPublicValues, SP1PublicValues, SP1Stdin, SP1VerifyingKey};
 
 use crate::PESSIMISTIC_PROOF_ELF;
@@ -33,8 +34,10 @@ impl Runner {
     /// Convert inputs to stdin.
     pub fn prepare_stdin(state: &NetworkState, batch_header: &MultiBatchHeader) -> SP1Stdin {
         let mut stdin = SP1Stdin::new();
-        stdin.write(state);
-        stdin.write(batch_header);
+        let state_bytes = to_bytes::<RkyvError>(state).expect("state rkyv");
+        let header_bytes = to_bytes::<RkyvError>(batch_header).expect("header rkyv");
+        stdin.write_slice(&state_bytes);
+        stdin.write_slice(&header_bytes);
         stdin
     }
 

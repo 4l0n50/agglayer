@@ -3,6 +3,8 @@ pub use pessimistic_proof_core::proof::zero_if_empty_local_exit_root;
 pub use pessimistic_proof_core::PessimisticProofOutput;
 #[cfg(any(test, feature = "testutils"))]
 use pessimistic_proof_core::{multi_batch_header::MultiBatchHeader, NetworkState};
+#[cfg(any(test, feature = "testutils"))]
+use rkyv::{api::high::to_bytes, rancor::Error as RkyvError};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "testutils"))]
 use sp1_sdk::{Prover, ProverClient, SP1Stdin};
@@ -55,8 +57,10 @@ impl Proof {
         let (p, _v) = mock.setup(ELF);
 
         let mut stdin = SP1Stdin::new();
-        stdin.write(state);
-        stdin.write(multi_batch_header);
+        let state_bytes = to_bytes::<RkyvError>(state).expect("state rkyv");
+        let header_bytes = to_bytes::<RkyvError>(multi_batch_header).expect("header rkyv");
+        stdin.write_slice(&state_bytes);
+        stdin.write_slice(&header_bytes);
 
         let proof = mock.prove(&p, &stdin).plonk().run().unwrap();
 

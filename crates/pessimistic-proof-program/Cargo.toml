@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 pessimistic-proof-core = { path = "../pessimistic-proof-core", default-features = false }
+rkyv = { version = "0.8.13", features = ["std", "bytecheck", "unaligned"] }
 sp1-zkvm = { version = "=5.2.4", features = ["verify"] }
 
 [build-dependencies]

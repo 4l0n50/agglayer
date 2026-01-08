@@ -21,6 +21,7 @@ use pessimistic_proof_test_suite::{
 };
 use rand::random;
 use rstest::rstest;
+use rkyv::{api::high::to_bytes, rancor::Error as RkyvError};
 use sp1_sdk::{utils, HashableKey, ProverClient, SP1Stdin};
 use unified_bridge::Claim;
 
@@ -365,8 +366,10 @@ fn test_sp1_simple() {
 
     let initial_state: NetworkState = LocalNetworkState::from(initial_state).into();
     let mut stdin = SP1Stdin::new();
-    stdin.write(&initial_state);
-    stdin.write(&multi_batch_header);
+    let state_bytes = to_bytes::<RkyvError>(&initial_state).expect("state rkyv");
+    let header_bytes = to_bytes::<RkyvError>(&multi_batch_header).expect("header rkyv");
+    stdin.write_slice(&state_bytes);
+    stdin.write_slice(&header_bytes);
     stdin.write_proof(
         *aggchain_proof.try_as_compressed().unwrap(),
         aggchain_vkey.vk,
